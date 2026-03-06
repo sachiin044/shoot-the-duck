@@ -5,8 +5,9 @@ import time
 from config import *
 
 class Duck:
-    def __init__(self, x, y, speed_mult=1.0, duck_type="normal"):
+    def __init__(self, x, y, speed_mult, duck_type, surfaces):
         self.type = duck_type
+        self.surfaces = surfaces # List of 3 frames
         self.spawn_time = time.time()
         self.pos = pygame.Vector2(x, y)
         
@@ -23,6 +24,12 @@ class Duck:
         self.zigzag_interval = random.uniform(0.6, 1.2)
         self.amplitude = random.uniform(20, 60)
         self.frequency = random.uniform(1.5, 3.5)
+        
+        # Advanced Zigzag state
+        self.zigzag_target_y = y
+        self.zigzag_change_timer = 0
+        self.zigzag_change_interval = random.uniform(0.4, 0.8)
+        self.vertical_speed = 0
         
         # Complexity layers
         self.diagonal_slope = random.choice([-0.4, -0.3, 0.3, 0.4])  # rise/run
@@ -78,13 +85,32 @@ class Duck:
                 self.current_speed = self.speed * 1.8
                 self.speed_burst_timer = 0
             
-            # Horizontal motion
-            self.pos.x += self.direction.x * self.current_speed * dt
+            # Horizontal motion with slight erratic variation
+            h_variation = math.sin(self.timer * 4.0) * 10.0 if self.pattern == "zigzag" else 0
+            self.pos.x += self.direction.x * (self.current_speed + h_variation) * dt
             
-            # Pattern vertical motion (Absolute positioning relative to base_y)
+            # Pattern vertical motion (Refined Zigzag for natural feel)
             if self.pattern == "zigzag":
-                offset = (math.cos(self.timer * math.pi / self.zigzag_interval) * 30)
-                self.pos.y = self.base_y + offset
+                self.zigzag_change_timer += dt
+                if self.zigzag_change_timer >= self.zigzag_change_interval:
+                    # Pick a new vertical target offset from base_y (Subtle range: reduced from 80)
+                    self.zigzag_target_y = self.base_y + random.uniform(-40, 40)
+                    self.zigzag_target_y = max(40, min(SCREEN_HEIGHT - 220, self.zigzag_target_y))
+                    self.zigzag_change_timer = 0
+                    # Vary the interval for subtleness (longer intervals)
+                    self.zigzag_change_interval = random.uniform(MIN_DIRECTION_CHANGE_INTERVAL, 1.8)
+                
+                # Smoothly move towards the target y using spring-like acceleration
+                dy = self.zigzag_target_y - self.pos.y
+                # Apply acceleration towards target
+                self.vertical_speed += dy * ZIGZAG_ACCEL * dt
+                # Apply damping to simulate air resistance and prevent wild oscillation
+                self.vertical_speed *= ZIGZAG_DAMPING
+                self.pos.y += self.vertical_speed * dt
+                
+                # ADVANCED: Add fluttering jitter (Further reduced for subtleness)
+                flutter = math.sin(self.timer * 15.0) * 2.0 
+                self.pos.y += flutter * dt * 30.0
             elif self.pattern == "sinusoidal":
                 offset = math.sin(self.timer * self.frequency) * self.amplitude
                 self.pos.y = self.base_y + offset
@@ -137,9 +163,9 @@ class Duck:
         self.falling = True
         self.velocity = pygame.Vector2(0, 0) # Stop horizontal movement
 
-    def draw(self, screen, frames):
-        # frames should be a list of wing animation surfaces
-        draw_surf = frames[self.frame_index]
+    def draw(self, screen, unused_frames=None):
+        # Use its own stored surfaces
+        draw_surf = self.surfaces[self.frame_index]
 
         if self.direction.x < 0:
             draw_surf = pygame.transform.flip(draw_surf, True, False)
