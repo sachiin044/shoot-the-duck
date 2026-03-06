@@ -32,10 +32,10 @@ class HUD:
             print("Warning: KIITfest logo not found.")
         
         # Menu State
-        self.kfid = ""
-        self.player_name = ""
+        self.kfid = "GUEST"
+        self.player_name = "Player"
         self.kfid_active = False
-        self.validation_status = "" # "", "validating", "success", "error"
+        self.validation_status = "success" # Default to success
         self.error_msg = ""
         self.kfid_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, 350, 300, 50)
         self.start_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, 450, 300, 60)
@@ -62,38 +62,9 @@ class HUD:
                 continue
 
     def validate_kfid(self):
-        """Calls the API to validate the entered KFID and get player name."""
-        if not self.kfid.strip():
-            self.error_msg = "PLEASE ENTER KFID"
-            self.validation_status = "error"
-            return False
-
-        self.validation_status = "validating"
-        self.error_msg = ""
-        
-        try:
-            payload = {"kfid": self.kfid.strip()}
-            response = requests.post(VALIDATE_API_URL, json=payload, timeout=5)
-            
-            if response.status_code == 200:
-                result = response.json()
-                if result.get("success"):
-                    data = result.get("data", {})
-                    self.player_name = data.get("name", "Unknown Player")
-                    self.validation_status = "success"
-                    return True
-                else:
-                    self.error_msg = result.get("message", "INVALID KFID")
-                    self.validation_status = "error"
-            else:
-                self.error_msg = "SERVER ERROR"
-                self.validation_status = "error"
-        except Exception as e:
-            print(f"Validation error: {e}")
-            self.error_msg = "CONNECTION FAILED"
-            self.validation_status = "error"
-            
-        return False
+        """No longer performs actual validation."""
+        self.validation_status = "success"
+        return True
 
     def draw(self, screen, score_manager, player):
         # 1. Draw Logo (Center Top)
@@ -250,8 +221,7 @@ class HUD:
                 self.kfid_active = False
                 
             if self.start_button_rect.collidepoint(event.pos):
-                if self.validate_kfid():
-                    return True
+                return True
         
         if event.type == pygame.KEYDOWN and self.kfid_active:
             # Handle Ctrl+V (Paste)
@@ -269,8 +239,7 @@ class HUD:
                 self.kfid = self.kfid[:-1]
                 self.validation_status = "" # Reset on backspace
             elif event.key == pygame.K_RETURN:
-                if self.validate_kfid():
-                    return True
+                return True
             else:
                 # Limit KFID length
                 if len(self.kfid) < 15 and event.unicode.isprintable():

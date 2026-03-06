@@ -2,7 +2,7 @@ from config import *
 
 class StateManager:
     def __init__(self):
-        self.state = MENU
+        self.state = COUNTDOWN
         self.last_state = None
 
     def change_state(self, new_state):

@@ -204,10 +204,11 @@ class ScoreManager:
         return modifiers
 
     def save_to_leaderboard(self, kfid, name):
-        """Saves final score and accuracy to local MongoDB if it's a new high score."""
+        """Saves final score and accuracy to local MongoDB."""
         if not kfid:
-            print("Leaderboard: Skipping save, no KFID.")
-            return
+            kfid = "GUEST"
+        if not name:
+            name = "Player"
 
         try:
             client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
